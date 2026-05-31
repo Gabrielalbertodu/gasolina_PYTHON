@@ -48,7 +48,7 @@ st.caption("Previsão de tendência do preço da gasolina com base em indicadore
 with st.sidebar:
     st.header("⚙️ Controle")
 
-    if st.button("🔄 Gerar Nova Previsão", type="primary", use_container_width=True):
+    if st.button("Gerar Nova Previsão", type="primary", use_container_width=True):
         with st.spinner("Coletando dados e gerando previsão..."):
             try:
                 # 1. Coleta de dados
