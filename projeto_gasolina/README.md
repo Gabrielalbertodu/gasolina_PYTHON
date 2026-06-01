@@ -16,11 +16,11 @@ Sistema de previsão de **tendência** do preço da gasolina no Brasil baseado e
 Projeto acadêmico que demonstra a integração de:
 
 - **Coleta automática de dados** de fontes públicas
-- **Machine Learning** com Scikit-Learn (RandomForestClassifier)
+- **Machine Learning** com Scikit-Learn
 - **API REST** com FastAPI
 - **Dashboard interativo** com Streamlit
-- **Automação** com APScheduler
-- **Persistência** com SQLite
+- **Automação de previsões** com APScheduler
+- **Persistência local** com SQLite
 
 ---
 
@@ -32,15 +32,10 @@ Projeto acadêmico que demonstra a integração de:
 ### Passos
 
 ```bash
-# 1. Clone ou extraia o projeto
 cd projeto_gasolina
-
-# 2. Crie e ative o ambiente virtual
 python -m venv venv
-source venv/bin/activate        # Linux/Mac
-venv\Scripts\activate           # Windows
-
-# 3. Instale as dependências
+venv\Scripts\activate          # Windows
+# source venv/bin/activate       # Linux/Mac
 pip install -r requirements.txt
 ```
 
@@ -48,7 +43,7 @@ pip install -r requirements.txt
 
 ## ▶️ Execução
 
-### API + Scheduler (modo principal)
+### API + Scheduler
 
 ```bash
 python app.py
@@ -56,17 +51,17 @@ python app.py
 
 A API estará disponível em:
 - **http://localhost:8000** — API
-- **http://localhost:8000/docs** — Documentação interativa (Swagger)
+- **http://localhost:8000/docs** — Documentação Swagger
 
 ### Dashboard
 
-Em um segundo terminal:
+Em outro terminal:
 
 ```bash
 streamlit run dashboard/dashboard.py
 ```
 
-O dashboard abrirá em **http://localhost:8501**
+O dashboard abre em **http://localhost:8501**.
 
 ### Testes
 
@@ -78,11 +73,11 @@ pytest tests/ -v
 
 ## 📡 Endpoints da API
 
-| Método | Rota        | Descrição                    |
-|--------|-------------|------------------------------|
-| GET    | `/saude`    | Verifica se a API está no ar |
-| GET    | `/previsao` | Retorna a última previsão    |
-| GET    | `/historico`| Lista as previsões salvas    |
+| Método | Rota        | Descrição                     |
+|--------|-------------|-------------------------------|
+| GET    | `/saude`    | Verifica se a API está no ar  |
+| GET    | `/previsao` | Retorna a última previsão     |
+| GET    | `/historico`| Lista as previsões salvas     |
 
 ### Exemplo de resposta `/previsao`
 
@@ -110,48 +105,38 @@ pytest tests/ -v
 
 ---
 
-## 🗂️ Estrutura do Projeto
+## 🏗️ Estrutura do Projeto
 
 ```
 projeto_gasolina/
 │
 ├── app.py                        # Ponto de entrada principal
-│
 ├── api/
 │   └── routes.py                 # Endpoints FastAPI
-│
 ├── data_collectors/
-│   ├── __init__.py               # Exporta as funções de coleta
-│   ├── noticias.py               # Google News RSS
+│   ├── __init__.py               # Exporta funções de coleta
 │   ├── dolar.py                  # AwesomeAPI (USD/BRL)
 │   ├── petroleo.py               # Yahoo Finance (Brent/WTI)
-│   └── gasolina.py               # ANP (preço no Brasil)
-│
+│   ├── gasolina.py               # ANP (preço gasolina Brasil)
+│   └── noticias.py               # RSS de notícias geopolíticas
 ├── preprocessing/
 │   └── tratamento.py             # Engenharia de features
-│
 ├── model/
-│   ├── treinamento.py            # Treina o RandomForest
-│   └── previsao.py               # Classe PredisorGasolina
-│
+│   ├── treinamento.py            # Treinamento do modelo
+│   └── previsao.py               # Classe de previsão
 ├── database/
 │   ├── models.py                 # Schema SQL
 │   └── database.py               # Operações CRUD
-│
 ├── scheduler/
-│   └── tarefas.py                # APScheduler (08:00 e 20:00)
-│
+│   └── tarefas.py                # Agendamento de previsões
 ├── dashboard/
 │   └── dashboard.py              # Interface Streamlit
-│
 ├── tests/
-│   ├── test_api.py               # Testes da API
-│   ├── test_model.py             # Testes do modelo ML
-│   └── test_database.py          # Testes do banco de dados
-│
+│   ├── test_api.py
+│   ├── test_model.py
+│   └── test_database.py
 ├── data/
-│   └── gasolina.sqlite3          # Banco de dados (gerado automaticamente)
-│
+│   └── gasolina.sqlite3          # Banco local gerado automaticamente
 └── requirements.txt
 ```
 
@@ -161,14 +146,14 @@ projeto_gasolina/
 
 | Tecnologia    | Uso                                      |
 |---------------|------------------------------------------|
-| Scikit-Learn  | Modelo RandomForestClassifier            |
-| Pandas        | Manipulação de dados e features          |
-| NumPy         | Geração de dados sintéticos              |
+| Scikit-Learn  | Modelo de classificação                  |
+| Pandas        | Manipulação de dados                     |
+| NumPy         | Geração e processamento de dados         |
 | FastAPI       | API REST                                 |
-| Uvicorn       | Servidor ASGI para a API                 |
+| Uvicorn       | Servidor ASGI                            |
 | Streamlit     | Dashboard interativo                     |
-| APScheduler   | Automação de previsões (cron)            |
-| SQLite        | Banco de dados local                     |
+| APScheduler   | Agendamento de previsões                 |
+| SQLite        | Persistência local                       |
 | Requests      | Coleta de dados via HTTP                 |
 | Pytest        | Testes unitários                         |
 
@@ -176,48 +161,36 @@ projeto_gasolina/
 
 ## 🔄 Fluxo do Sistema
 
-```mermaid
-flowchart TD
-    A[Início: app.py] --> B[Treinar Modelo]
-    B --> C[Iniciar API FastAPI]
-    C --> D[Iniciar Scheduler]
-    D --> E{Horário 08:00 ou 20:00?}
-    E -- Sim --> F[Coletar Dados]
-    F --> G[Dólar via AwesomeAPI]
-    F --> H[Petróleo via Yahoo Finance]
-    F --> I[Notícias via Google RSS]
-    F --> J[Gasolina via ANP]
-    G & H & I & J --> K[Construir Features]
-    K --> L[Modelo: Prever Tendência]
-    L --> M[Salvar no SQLite]
-    M --> N[Retornar: Alta / Queda / Estabilidade + Probabilidade]
-    E -- Não --> E
-```
+1. `app.py` inicializa o sistema
+2. O modelo é treinado em `model/treinamento.py`
+3. A API FastAPI é iniciada
+4. O scheduler agenda previsões em `08:00` e `20:00`
+5. Em cada ciclo, o app coleta:
+   - dólar via AwesomeAPI
+   - petróleo via Yahoo Finance
+   - notícias geopolíticas via RSS
+   - gasolina via ANP
+6. O conjunto de dados é transformado em features
+7. O modelo classifica a tendência e salva no SQLite
+8. O dashboard e a API exibem os resultados
 
 ---
 
-## 🏗️ Arquitetura Modular
+## 🧠 Como o modelo funciona
 
-```mermaid
-graph LR
-    DC[data_collectors] --> PP[preprocessing]
-    PP --> ML[model]
-    ML --> API[api]
-    ML --> DB[database]
-    API --> DB
-    DB --> DASH[dashboard]
-    SCH[scheduler] --> DC
-```
+- Treina um `RandomForestClassifier` com dados sintéticos
+- A saída é uma tendência: **Alta**, **Queda** ou **Estabilidade**
+- A probabilidade representa a confiança do modelo na classe prevista
+- O modelo não retorna o preço final da gasolina
 
 ---
 
-## 📋 Casos de Uso
+## ℹ️ Observações importantes
 
-| ID  | Caso de Uso              | Ator         | Descrição                                              |
-|-----|--------------------------|--------------|--------------------------------------------------------|
-| UC1 | Consultar previsão atual | Usuário/API  | Acessa GET /previsao e recebe tendência + probabilidade |
-| UC2 | Consultar histórico      | Usuário/API  | Acessa GET /historico e vê previsões anteriores        |
-| UC3 | Gerar previsão manual    | Usuário      | Clica no botão do dashboard para forçar nova previsão  |
+- O dashboard usa o histórico ANP para gerar gráficos de evolução
+- Se o gráfico não aparecer, verifique a coleta de ANP e a conexão com a internet
+- O sistema tem fallback de valores quando alguma fonte externa estiver indisponível
+- A previsão é um indicador de tendência, não uma estimativa de preço absoluto
 | UC4 | Previsão automática      | Sistema      | APScheduler executa previsão às 08:00 e 20:00          |
 | UC5 | Visualizar dashboard     | Usuário      | Acessa Streamlit para ver indicadores e gráficos       |
 

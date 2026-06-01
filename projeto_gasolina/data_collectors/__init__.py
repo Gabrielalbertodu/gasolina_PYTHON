@@ -8,10 +8,12 @@ from data_collectors.noticias import coletar_noticias
 from data_collectors.dolar import coletar_dolar
 from data_collectors.petroleo import coletar_petroleo
 from data_collectors.gasolina import coletar_gasolina
+from data_collectors.gasolina import coletar_gasolina_historico
 
 __all__ = [
     "coletar_noticias",
     "coletar_dolar",
     "coletar_petroleo",
     "coletar_gasolina",
+    "coletar_gasolina_historico",
 ]

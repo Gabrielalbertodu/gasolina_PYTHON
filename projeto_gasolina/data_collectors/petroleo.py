@@ -19,7 +19,7 @@ def coletar_petroleo() -> Optional[Tuple[float, float]]:
         brent = _buscar_preco("BZ=F", "Brent")
         wti = _buscar_preco("CL=F", "WTI")
 
-        if brent and wti:
+        if brent is not None and wti is not None:
             return (brent, wti)
 
         return None
@@ -36,9 +36,16 @@ def _buscar_preco(simbolo: str, nome: str) -> Optional[float]:
             f"https://query1.finance.yahoo.com/v8/finance/chart/"
             f"{simbolo}?range=5d&interval=1d"
         )
-        response = requests.get(url, timeout=10)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+        response = requests.get(url, timeout=15, headers=headers)
         response.raise_for_status()
         data = response.json()
+
+        meta = data.get("chart", {}).get("result", [{}])[0].get("meta", {})
+        if meta and meta.get("regularMarketPrice") is not None:
+            return float(meta["regularMarketPrice"])
 
         fechamentos = (
             data["chart"]["result"][0]["indicators"]["quote"][0]["close"]

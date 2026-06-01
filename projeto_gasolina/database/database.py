@@ -104,13 +104,21 @@ class Database:
             ).fetchone()
             return dict(row) if row else None
 
-    def obter_historico(self, limite: int = 20) -> List[Dict[str, Any]]:
-        """Retorna as N previsões mais recentes."""
+    def obter_historico(self, limite: Optional[int] = 20) -> List[Dict[str, Any]]:
+        """Retorna as N previsões mais recentes.
+
+        Se limite for None, retorna todas as previsões disponíveis.
+        """
         with self._conectar() as conn:
-            rows = conn.execute(
-                "SELECT * FROM previsoes ORDER BY data_hora DESC LIMIT ?",
-                (limite,),
-            ).fetchall()
+            if limite is None:
+                rows = conn.execute(
+                    "SELECT * FROM previsoes ORDER BY data_hora DESC"
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM previsoes ORDER BY data_hora DESC LIMIT ?",
+                    (limite,),
+                ).fetchall()
             return [dict(r) for r in rows]
 
     def obter_fontes(self, previsao_id: int) -> List[str]:

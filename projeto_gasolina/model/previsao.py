@@ -37,14 +37,17 @@ class PredisorGasolina:
             - probabilidades: dict com probabilidade de cada classe
             - explicacao: texto explicativo para o usuário
         """
-        tendencia = self.modelo.predict(features)[0]
+        tendencia = str(self.modelo.predict(features)[0])
         probs_array = self.modelo.predict_proba(features)[0]
 
         # Mapeia classe → probabilidade
         probabilidades = {
-            classe: float(prob)
+            str(classe): float(prob)
             for classe, prob in zip(self.classes, probs_array)
         }
+
+        # Normaliza classes nas saídas para strings Python
+        self.classes = [str(classe) for classe in self.classes]
 
         confianca = probabilidades[tendencia]
         explicacao = self._gerar_explicacao(features.iloc[0], tendencia, confianca)
@@ -84,6 +87,6 @@ class PredisorGasolina:
         texto_fatores = ", ".join(fatores) if fatores else "indicadores em níveis neutros"
 
         return (
-            f"Tendência de {tendencia.upper()} com confiança de {confianca:.0%}. "
+            f"Tendência de {tendencia.upper()} com confiança de {confianca:.3%}. "
             f"Fatores: {texto_fatores}."
         )

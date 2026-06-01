@@ -15,7 +15,9 @@ O modelo aprende essas regras e generaliza para dados reais.
 
 import numpy as np
 import pandas as pd
+from functools import lru_cache
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
@@ -32,6 +34,7 @@ COLUNAS = [
 ]
 
 
+@lru_cache(maxsize=1)
 def treinar_modelo() -> Pipeline:
     """
     Gera dados sintéticos e treina o pipeline de ML.
@@ -83,14 +86,22 @@ def treinar_modelo() -> Pipeline:
     y = np.array(labels)
 
     # Pipeline: normaliza os dados e treina a Random Forest
+    rf = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=10,
+        min_samples_split=5,
+        random_state=42,
+    )
+
+    calibrated = CalibratedClassifierCV(
+        estimator=rf,
+        cv=3,
+        method="sigmoid",
+    )
+
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
-        ("classificador", RandomForestClassifier(
-            n_estimators=100,
-            max_depth=10,
-            min_samples_split=5,
-            random_state=42,
-        )),
+        ("classificador", calibrated),
     ])
 
     pipeline.fit(X, y)

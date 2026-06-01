@@ -31,7 +31,9 @@ from data_collectors import (
     coletar_petroleo,
     coletar_noticias,
     coletar_gasolina,
+    coletar_gasolina_historico,
 )
+import matplotlib.pyplot as plt
 
 # Configuração da página
 st.set_page_config(
@@ -40,8 +42,8 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("⛽ Gasolina IA")
-st.caption("Previsão de tendência do preço da gasolina com base em indicadores econômicos e geopolíticos.")
+st.title("Registro Gasolina")
+st.caption("Previsão de tendência do preço da gasolina usando indicadores econômicos e geopolíticos.\nConfiabilidade mostra quanto o modelo acredita nessa previsão, em linguagem simples.")
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 
@@ -52,10 +54,22 @@ with st.sidebar:
         with st.spinner("Coletando dados e gerando previsão..."):
             try:
                 # 1. Coleta de dados
-                dolar = coletar_dolar() or 5.20
-                petroleo = coletar_petroleo() or (82.0, 78.0)
-                gasolina_dados = coletar_gasolina() or {"gasolina_media": 6.15}
+                dolar = coletar_dolar()
+                petroleo = coletar_petroleo()
+                gasolina_dados = coletar_gasolina()
                 noticias = coletar_noticias() or []
+
+                dolar_source = "AwesomeAPI" if dolar is not None else "fallback"
+                if dolar is None:
+                    dolar = 5.20
+
+                brent_wti_source = "API Yahoo" if petroleo is not None else "fallback"
+                if petroleo is None:
+                    petroleo = (82.0, 78.0)
+
+                gasolina_source = "ANP" if gasolina_dados is not None else "fallback"
+                if gasolina_dados is None:
+                    gasolina_dados = {"gasolina_media": 6.15}
 
                 brent, wti = petroleo
                 gasolina = gasolina_dados["gasolina_media"]
@@ -99,51 +113,94 @@ with st.sidebar:
 
 # ── Conteúdo Principal ────────────────────────────────────────────────────────
 
+# Coleta de referência para mostrar fontes e status ao carregar a página
+# (não altera a previsão já salva, apenas indica se a consulta está funcionando).
+
+page_dolar = coletar_dolar()
+page_petroleo = coletar_petroleo()
+page_gasolina_dados = coletar_gasolina()
+page_noticias = coletar_noticias() or []
+
+page_dolar_source = "AwesomeAPI" if page_dolar is not None else "fallback"
+if page_dolar is None:
+    page_dolar = 5.20
+
+page_brent_wti_source = "API Yahoo" if page_petroleo is not None else "fallback"
+if page_petroleo is None:
+    page_petroleo = (82.0, 78.0)
+
+page_brent, page_wti = page_petroleo
+page_gasolina_source = "ANP" if page_gasolina_dados is not None else "fallback"
+if page_gasolina_dados is None:
+    page_gasolina_dados = {"gasolina_media": 6.15, "total_amostras": 0}
+
+page_gasolina = page_gasolina_dados["gasolina_media"]
+page_gasolina_amostras = page_gasolina_dados.get("total_amostras", 0)
+
 ultima = db.obter_ultima_previsao()
 
-if not ultima:
-    st.warning("⚠️ Nenhuma previsão disponível. Clique em **Gerar Nova Previsão** no menu lateral.")
-    st.stop()
+if ultima:
+    # ── Resumo da Última Previsão ─────────────────────────────────────────────────
+    st.subheader("Última Previsão")
 
-# ── Resumo da Última Previsão ─────────────────────────────────────────────────
+    emoji_tendencia = {"Alta": "📈", "Queda": "📉", "Estabilidade": "➡️"}
+    emoji = emoji_tendencia.get(ultima["previsao"], "❓")
 
-st.subheader("📊 Última Previsão")
+    col1, col2, col3 = st.columns(3)
 
-emoji_tendencia = {"Alta": "📈", "Queda": "📉", "Estabilidade": "➡️"}
-emoji = emoji_tendencia.get(ultima["previsao"], "❓")
+    with col1:
+        st.metric("Tendência", f"{emoji} {ultima['previsao']}")
 
-col1, col2, col3 = st.columns(3)
+    with col2:
+        st.metric("Confiabilidade", f"{ultima['probabilidade']:.3%}")
 
-with col1:
-    st.metric("Tendência", f"{emoji} {ultima['previsao']}")
+    with col3:
+        st.metric("Gerada em", ultima["data_hora"][:16].replace("T", " "))
 
-with col2:
-    st.metric("Confiança", f"{ultima['probabilidade']:.0%}")
+    st.info(
+        "💬 " + ultima['explicacao'] + "\n\n" \
+        "Confiabilidade é a chance do modelo estar certo sobre essa tendência, " \
+        "quanto maior, mais ele acredita na previsão."
+    )
 
-with col3:
-    st.metric("Gerada em", ultima["data_hora"][:16].replace("T", " "))
+    st.subheader("📉 Indicadores Utilizados")
 
-st.info(f"💬 {ultima['explicacao']}")
+    col1, col2, col3, col4 = st.columns(4)
 
-# ── Indicadores ───────────────────────────────────────────────────────────────
+    with col1:
+        st.metric("💵 USD/BRL", f"R$ {ultima.get('dolar') or 0:.2f}")
+    with col2:
+        st.metric("🛢️ Brent", f"US$ {ultima.get('brent') or 0:.2f}")
+    with col3:
+        st.metric("🛢️ WTI", f"US$ {ultima.get('wti') or 0:.2f}")
+    with col4:
+        st.metric("⛽ Último preço da gasolina usado", f"R$ {ultima.get('gasolina') or 0:.2f}")
 
-st.subheader("📉 Indicadores Utilizados")
+else:
+    st.warning(
+        "⚠️ Nenhuma previsão disponível. Clique em **Gerar Nova Previsão** no menu lateral. "
+        "Os dados históricos e de fontes ainda estão disponíveis abaixo."
+    )
 
-col1, col2, col3, col4 = st.columns(4)
+# ── Status das fontes ─────────────────────────────────────────────────────────
 
-with col1:
-    st.metric("💵 USD/BRL", f"R$ {ultima.get('dolar') or 0:.2f}")
-with col2:
-    st.metric("🛢️ Brent", f"US$ {ultima.get('brent') or 0:.2f}")
-with col3:
-    st.metric("🛢️ WTI", f"US$ {ultima.get('wti') or 0:.2f}")
-with col4:
-    st.metric("⛽ Gasolina Média", f"R$ {ultima.get('gasolina') or 0:.2f}")
-
+st.subheader("🔎 Status das fontes")
+status_cols = st.columns(4)
+with status_cols[0]:
+    st.write(f"**Dólar:** R$ {page_dolar:.4f} ({page_dolar_source})")
+with status_cols[1]:
+    st.write(f"**Petróleo:** Brent US$ {page_brent:.2f} / WTI US$ {page_wti:.2f} ({page_brent_wti_source})")
+with status_cols[2]:
+    st.write(
+        f"**Gasolina ANP:** R$ {page_gasolina:.3f} ({page_gasolina_source})\n"
+        f"Amostras: {page_gasolina_amostras}"
+    )
+with status_cols[3]:
+    st.write(f"**Notícias coletadas:** {len(page_noticias)}")
 # ── Fontes ────────────────────────────────────────────────────────────────────
 
-st.subheader("📚 Fontes Consultadas")
-fontes = db.obter_fontes(ultima["id"])
+st.subheader("Fontes Consultadas")
+fontes = db.obter_fontes(ultima["id"]) if ultima else []
 
 if fontes:
     for f in fontes:
@@ -151,34 +208,77 @@ if fontes:
 else:
     st.write("Nenhuma fonte registrada.")
 
-# ── Histórico ─────────────────────────────────────────────────────────────────
+# ── Evolução do Preço da Gasolina ─────────────────────────────────────────────
 
-st.subheader("🕘 Histórico de Previsões")
-historico = db.obter_historico(30)
+st.subheader("🕘 Evolução do Preço da Gasolina (média mensal)")
 
-if historico:
-    df = pd.DataFrame(historico)
+registries = coletar_gasolina_historico()
+
+if registries:
+    df = pd.DataFrame(registries)
     df["data_hora"] = pd.to_datetime(df["data_hora"])
     df = df.sort_values("data_hora")
 
-    # Gráfico de confiança ao longo do tempo
-    st.line_chart(
-        df.set_index("data_hora")[["probabilidade"]],
-        use_container_width=True,
+    df["Mês"] = df["data_hora"].dt.to_period("M").dt.to_timestamp()
+    mensal = (
+        df.groupby("Mês")["gasolina"]
+        .mean()
+        .round(3)
+        .reset_index()
+        .rename(columns={"gasolina": "Preço Médio R$"})
     )
 
-    # Tabela resumida
-    st.dataframe(
-        df[["data_hora", "previsao", "probabilidade"]]
-        .rename(columns={
-            "data_hora": "Data/Hora",
-            "previsao": "Tendência",
-            "probabilidade": "Confiança",
-        })
-        .sort_values("Data/Hora", ascending=False)
-        .head(15),
-        use_container_width=True,
-        hide_index=True,
+    st.markdown(
+        "Fonte: ANP. O gráfico abaixo mostra a variação mensal do preço da gasolina regular "
+        "com base nas coletas de posto de combustíveis."
     )
+
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.plot(mensal["Mês"], mensal["Preço Médio R$"], marker="o", linestyle="-", color="#0E7AFE")
+        ax.bar(mensal["Mês"], mensal["Preço Médio R$"], alpha=0.25, color="#0E7AFE")
+        ax.set_title("Preço médio mensal da gasolina")
+        ax.set_ylabel("R$ por litro")
+        ax.set_xlabel("Mês")
+        ax.grid(axis="y", linestyle="--", alpha=0.6)
+        fig.autofmt_xdate(rotation=45)
+        st.pyplot(fig)
+
+    with col2:
+        ultimo_registro = df["data_hora"].dt.strftime("%Y-%m-%d").max()
+        st.metric("Último registro", ultimo_registro)
+        st.metric("Amostras de gasolina", len(df))
+        st.metric("Meses na série", len(mensal))
+
+    st.markdown("---")
+    st.subheader("Evolução diária (média por dia)")
+    daily = (
+        df.groupby(df["data_hora"].dt.strftime("%Y-%m-%d"))["gasolina"]
+        .mean()
+        .round(3)
+        .rename("Preço Médio R$")
+    )
+    st.line_chart(daily, use_container_width=True)
+
+    st.subheader("Evolução semanal (média por semana)")
+    weekly = (
+        df.groupby(df["data_hora"].dt.to_period("W").apply(lambda x: x.start_time))["gasolina"]
+        .mean()
+        .round(3)
+        .rename("Preço Médio R$")
+    )
+    st.line_chart(weekly, use_container_width=True)
+
+    if len(mensal) > 1:
+        st.subheader("Evolução mensal (média por mês)")
+        st.bar_chart(mensal.set_index("Mês")["Preço Médio R$"], use_container_width=True)
+
+    st.markdown("---")
+    st.dataframe(mensal.sort_values("Mês", ascending=False).head(24), use_container_width=True, hide_index=True)
+
 else:
-    st.info("Sem histórico ainda.")
+    st.warning(
+        "Não foi possível carregar o histórico de preços de gasolina da ANP. "
+        "Verifique a conexão com a internet ou tente novamente mais tarde."
+    )

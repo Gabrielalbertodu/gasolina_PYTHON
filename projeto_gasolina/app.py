@@ -95,7 +95,7 @@ def executar_previsao() -> None:
 
         logger.info(
             f"Previsão salva: {resultado['tendencia']} "
-            f"({resultado['probabilidade']:.0%})"
+            f"({resultado['probabilidade']:.1%})"
         )
 
     except Exception as e:
